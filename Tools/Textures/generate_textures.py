@@ -13,6 +13,7 @@ wrap seamlessly.
   T_NonSkid_D     1024^2  detail (R mottling, G roughness variation, B grit height), tiles every 4 m
   T_DeckMask      4096x1024 over the 161 x 40 m hero deck:
                   R rubber, G oil/hydraulic stains, B traffic wear, A exhaust heat
+  T_SeaNormal     1024^2  tileable wind-wave normal map for the sea surface
   T_HazeNoise_N   512^2   tileable normal map for heat-haze refraction
   T_SteamPuff     256^2   soft puff sprite (alpha) for catapult steam
 """
@@ -144,6 +145,18 @@ wear = np.clip(wear, 0.0, 1.0)
 # Exhaust heat: the stretch of deck between the nozzle and the jet blast deflector.
 heat = np.exp(-((xs + 17.0) / 3.5) ** 2) * np.exp(-(zs / 4.0) ** 2) * (0.6 + 0.4 * patch)
 save("T_DeckMask", rgba(rubber, oil, wear, np.clip(heat, 0.0, 1.0)))
+
+# --- Sea surface -----------------------------------------------------------------------
+# Wind waves: energy concentrated along the wind direction (x), crests stretched across it.
+size = 1024
+rng = np.random.default_rng(61)
+fx = np.fft.fftfreq(size)[None, :]
+fy = np.fft.fftfreq(size)[:, None]
+k = np.sqrt(fx * fx + fy * fy) + 1e-6
+spread = np.abs(fx) / k                                   # cos(angle to the wind)
+spectrum = np.exp(-((k - 0.02) / 0.03) ** 2) * spread ** 4 + 0.15 * k ** -1.2 * (k > 0.01) * spread ** 2
+waves = np.real(np.fft.ifft2(np.fft.fft2(rng.standard_normal((size, size))) * spectrum))
+save("T_SeaNormal", rgba(*np.moveaxis(height_to_normal(normalise(waves), 14.0), -1, 0)))
 
 # --- Effects ---------------------------------------------------------------------------
 haze = spectral_noise(512, 2.4, 41)

@@ -67,14 +67,14 @@ catapult. At constant acceleration, 150 kt over 94.4 m takes 2.45 s; reaching it
 2.0 s would need a peak near 6.6 g. "150 kt in 2 s" is exactly the constant-
 acceleration result for a ~76 m stroke, the length of the shorter C-13-0 and C-13-3.
 With a front-loaded force profile and a 135 kt deck-relative end speed, the model
-gives a 2.58 s stroke and a 3.2 g peak, inside the 2.2 to 2.8 s window derived for a
+gives a 2.54 s stroke and a 3.2 g peak, inside the 2.2 to 2.8 s window derived for a
 94.4 m stroke.
 
 ## Tuning
 
 `SimTests/tools/rotation_sweep.cpp` sweeps the control-law rotation settings and
 reports sink off the bow, pitch rate and angle of attack. The defaults (launch-flap
-CL₀ 0.45, 10°/s rotation) give a 1.7 m settle off the bow, a 10°/s peak pitch rate
+CL₀ 0.45, 10°/s rotation) give about a 1.4 m settle off the bow, a 10°/s peak pitch rate
 and an 11° peak angle of attack.
 
 Still to calibrate against the DVIDS B-roll of the first launch (DVIDS 372940):

@@ -25,8 +25,10 @@ class UCatapultSteamComponent;
 /// The aircraft model is third-party and not in the repository (see ASSETS.md). If it
 /// is missing, a blockout made of engine primitives stands in.
 ///
-/// Command line, for unattended reference frames:
-///   -LaunchCapture=<file.png> -LaunchCaptureTime=<seconds after the shot>
+/// Command line, for unattended output (files go to Saved/Captures):
+///   -LaunchCapture=<file.png> -LaunchCaptureTime=<s>   one frame at that time
+///   -LaunchRecord=<folder> [-LaunchRecordFrom=-8 -LaunchRecordTo=9 -LaunchRecordFPS=30]
+///       a numbered frame sequence on a fixed timeline, for encoding to video
 UCLASS()
 class F35CLAUNCH_API AF35CLaunchActor : public AActor
 {
@@ -115,6 +117,7 @@ private:
 	                                      const FRotator& Rotation = FRotator::ZeroRotator);
 	UMaterialInterface* ProjectMaterial(const TCHAR* Name) const;
 	bool UpdateCapture();
+	bool UpdateRecording();
 	void AimCamera(float DeltaSeconds, bool bSnap);
 	void ConfigureCameraExposure();
 	void BuildExhaustEffects();
@@ -171,6 +174,12 @@ private:
 	TUniquePtr<launchsim::LaunchSimulation> Sim;
 
 	FString CaptureFile;
+	FString RecordFolder;
+	double RecordFrom = -8.0;
+	double RecordTo = 9.0;
+	double RecordFps = 30.0;
+	int32 RecordFrame = 0;
+	int32 RecordTail = -1;
 	double CaptureTime = 1.0;
 	int32 FramesSinceCapture = -1;
 };

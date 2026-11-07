@@ -45,7 +45,7 @@ public:
 	float StrokeRate = 160.0f;  // puffs per second behind the moving shuttle
 
 	UPROPERTY(EditAnywhere, Category = "Steam")
-	int32 EndOfStrokePuffs = 45;
+	int32 EndOfStrokePuffs = 30;
 
 private:
 	struct FPuff

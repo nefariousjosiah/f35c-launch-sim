@@ -96,7 +96,7 @@ void UCatapultSteamComponent::Step(float DeltaSeconds, double ShotTime, double S
 		{
 			Spawn(FVector(PowerStroke + Random.FRandRange(0.0f, 4.0f), Random.FRandRange(-0.6f, 0.6f), 0.2f),
 			      FVector(Random.FRandRange(2.0f, 8.0f), Random.FRandRange(-2.0f, 2.0f), Random.FRandRange(1.5f, 4.0f)),
-			      Random.FRandRange(0.8f, 1.5f), Random.FRandRange(3.0f, 5.0f), 0.9f);
+			      Random.FRandRange(0.5f, 0.9f), Random.FRandRange(2.0f, 3.5f), 0.8f);
 		}
 	}
 

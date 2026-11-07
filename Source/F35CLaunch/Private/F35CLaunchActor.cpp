@@ -322,6 +322,18 @@ void AF35CLaunchActor::BeginPlay()
 
 	FParse::Value(FCommandLine::Get(), TEXT("LaunchCapture="), CaptureFile);
 	FParse::Value(FCommandLine::Get(), TEXT("LaunchCaptureTime="), CaptureTime);
+	FParse::Value(FCommandLine::Get(), TEXT("LaunchRecord="), RecordFolder);
+	FParse::Value(FCommandLine::Get(), TEXT("LaunchRecordFrom="), RecordFrom);
+	FParse::Value(FCommandLine::Get(), TEXT("LaunchRecordTo="), RecordTo);
+	FParse::Value(FCommandLine::Get(), TEXT("LaunchRecordFPS="), RecordFps);
+	if (!RecordFolder.IsEmpty())
+	{
+		// Pre-roll so the steam and the camera operators are already in motion at the first frame.
+		double PreRoll = 1.5;
+		FParse::Value(FCommandLine::Get(), TEXT("LaunchRecordPreRoll="), PreRoll);
+		StartTime = RecordFrom - FMath::Max(PreRoll, 0.0);
+		LoopAfter = RecordTo + 10.0;
+	}
 
 	ConfigureCameraExposure();
 	if (ViewCamera != nullptr)
@@ -392,7 +404,15 @@ void AF35CLaunchActor::Tick(float DeltaSeconds)
 	{
 		return;
 	}
-	if (!CaptureFile.IsEmpty())
+	if (!RecordFolder.IsEmpty())
+	{
+		if (UpdateRecording())
+		{
+			return;
+		}
+		DeltaSeconds = static_cast<float>(1.0 / RecordFps);
+	}
+	else if (!CaptureFile.IsEmpty())
 	{
 		if (UpdateCapture())
 		{
@@ -413,6 +433,37 @@ void AF35CLaunchActor::Tick(float DeltaSeconds)
 	UpdateEffects(Sim->snapshot(), static_cast<float>(Sim->time() - LastEffectsTime));
 	LastEffectsTime = Sim->time();
 	AimCamera(DeltaSeconds, false);
+}
+
+bool AF35CLaunchActor::UpdateRecording()
+{
+	// Hold the timeline while shaders compile, then step exactly one frame of sim time per
+	// rendered frame and save every frame in the recording window.
+	if (GShaderCompilingManager != nullptr && GShaderCompilingManager->GetNumRemainingJobs() > 0)
+	{
+		return true;
+	}
+	if (RecordTail >= 0)
+	{
+		if (++RecordTail > 10)
+		{
+			FPlatformMisc::RequestExit(false);
+		}
+		return true;
+	}
+	Sim->advance(1.0 / RecordFps);
+	if (Sim->time() >= RecordFrom)
+	{
+		const FString Path = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("Captures") / RecordFolder /
+		                                                      FString::Printf(TEXT("frame_%05d.png"), RecordFrame++));
+		FScreenshotRequest::RequestScreenshot(Path, false, false);
+	}
+	if (Sim->time() > RecordTo)
+	{
+		UE_LOG(LogTemp, Display, TEXT("LaunchRecord: %d frames -> %s"), RecordFrame, *RecordFolder);
+		RecordTail = 0;
+	}
+	return false;
 }
 
 bool AF35CLaunchActor::UpdateCapture()

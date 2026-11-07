@@ -1,6 +1,6 @@
 # Copyright (c) 2026 nefariousjosiah. MIT License.
 """Builds /Game/Maps/LaunchTest from scratch: sun, sky, haze, placeholder sea,
-the catapult deck, the launch actor and a deck-level camera.
+the catapult deck, the launch actor and the shot director that operates the cameras.
 
 The level is generated rather than hand-edited so that every lighting and camera
 value lives in reviewable text. Run it headless:
@@ -71,16 +71,19 @@ def build():
     fog_component = fog.get_component_by_class(unreal.ExponentialHeightFogComponent)
     # Thin low marine layer on top of the Sky Atmosphere's own aerial perspective. (A black
     # inscattering colour, as sometimes recommended, darkened the horizon here.)
-    fog_component.set_editor_property("fog_density", 0.0015)
+    # Haze builds over kilometres, not metres: starting it 2 km out keeps the nearby sea
+    # crisp (wave texture, glints) while the horizon still softens.
+    fog_component.set_editor_property("fog_density", 0.0012)
     fog_component.set_editor_property("fog_height_falloff", 0.08)
+    fog_component.set_editor_property("start_distance", 200000.0)
 
     spawn(unreal.VolumetricCloud, label="Clouds")
 
-    # Placeholder sea until the FFT ocean is in: a large flat plane at the waterline.
+    # Sea: a large plane at the waterline with wind-wave normals (an FFT ocean is the upgrade path).
     sea = spawn(unreal.StaticMeshActor, (0.0, 0.0, -DECK_HEIGHT_CM), label="SeaPlaceholder")
     sea_mesh = sea.get_component_by_class(unreal.StaticMeshComponent)
     sea_mesh.set_static_mesh(unreal.load_asset("/Engine/BasicShapes/Plane.Plane"))
-    sea_mesh.set_material(0, unreal.load_asset("/Game/Materials/MI_SeaPlaceholder"))  # from build_materials.py
+    sea_mesh.set_material(0, unreal.load_asset("/Game/Materials/M_Sea"))  # from build_deck_and_effects.py
     # 300 km square: past the ~16 km horizon from deck height, so the plane's edge never shows.
     sea.set_actor_scale3d(unreal.Vector(300000.0, 300000.0, 1.0))
 
@@ -95,21 +98,12 @@ def build():
 
     deck = spawn(unreal.load_class(None, "/Script/F35CLaunch.CatapultDeck"), label="CatapultDeck")
 
-    # Deck-level camera on the aft starboard quarter, roughly where a Navy photographer stands:
-    # ~10 m aft of the jet, 26 m to starboard, forward of the jet blast deflector.
-    camera = spawn(unreal.CineCameraActor, (-1600.0, 2600.0, 170.0), (0.0, -125.0, 0.0), "DeckCamera")
-    camera_component = camera.get_cine_camera_component()
-    camera_component.set_editor_property("current_focal_length", 35.0)
-    camera_component.set_editor_property("current_aperture", 11.0)  # f/11, 1/250 s, ISO 100 -> EV100 ~ 15
-    # Focus and exposure are set by the launch actor at play (manual focus on the jet).
-    set_settings(camera_component, "post_process_settings", {
-        "camera_iso": 100.0,
-        "camera_shutter_speed": 250.0,
-    })
-
+    # Cameras are operated by the shot director (Source/F35CLaunch/Private/ShotDirector.cpp):
+    # island telephoto, handheld deck camera, locked-off bow camera, with cuts timed to the launch.
     launch = spawn(unreal.load_class(None, "/Script/F35CLaunch.F35CLaunchActor"), label="F35CLaunch")
     launch.set_editor_property("deck", deck)
-    launch.set_editor_property("view_camera", camera)
+    director = spawn(unreal.load_class(None, "/Script/F35CLaunch.ShotDirector"), label="ShotDirector")
+    director.set_editor_property("launch", launch)
 
     levels.save_current_level()
     unreal.log(f"Built {LEVEL_PATH}")

@@ -52,6 +52,7 @@ grit_d = import_texture("T_NonSkid_D", TS.TC_MASKS)
 deck_mask = import_texture("T_DeckMask", TS.TC_MASKS, tiling=False)
 haze_n = import_texture("T_HazeNoise_N", TS.TC_NORMALMAP)
 puff = import_texture("T_SteamPuff", TS.TC_DEFAULT)
+sea_n = import_texture("T_SeaNormal", TS.TC_NORMALMAP)
 
 
 # --- Graph helpers -----------------------------------------------------------------------
@@ -219,8 +220,37 @@ puff_alpha = s.node(unreal.MaterialExpressionComponentMask, r=True)  # from the 
 s.link(tex, puff_alpha, "", out="A")
 opacity = s.mul(s.mul(s.mul(puff_alpha, fade), soft), s.scalar("Density", 0.55))
 s.out(opacity, MP.MP_OPACITY)
-s.out(s.color("SteamColor", (0.75, 0.76, 0.78)), MP.MP_BASE_COLOR)
+steam_color = s.color("SteamColor", (0.75, 0.76, 0.78))
+s.out(steam_color, MP.MP_BASE_COLOR)
+# Forward scattering: real steam glows when back-lit; lit translucency alone renders it dark.
+s.out(s.mul(steam_color, s.scalar("Scatter", 350.0)), MP.MP_EMISSIVE_COLOR)  # blending applies opacity
 s.out(s.const(1.0), MP.MP_ROUGHNESS)
 s.finish()
 
-unreal.log("Built M_Deck, M_HeatHaze, M_SteamPuff")
+# --- M_Sea -----------------------------------------------------------------------------
+# Deep water seen from deck height: dark, glossy, with wind waves at two scales drifting
+# downwind, so the surface has texture and sun glints instead of a flat gradient.
+w = Graph("M_Sea")
+w.set(has_pixel_animation=True)
+world_xy = w.mask(w.node(unreal.MaterialExpressionWorldPosition), r=True, g=True)
+time = w.node(unreal.MaterialExpressionTime)
+big_uv = w.add(w.div(world_xy, w.const(3200.0)), w.mul(time, w.const(0.010)))
+small_uv = w.add(w.div(world_xy, w.const(650.0)), w.mul(time, w.const(0.035)))
+big = w.sample(sea_n, big_uv, ST.SAMPLERTYPE_NORMAL)
+small = w.sample(sea_n, small_uv, ST.SAMPLERTYPE_NORMAL)
+# A swell layer with a ~300 m tile keeps distant water from averaging out to a flat fill.
+swell_uv = w.add(w.div(world_xy, w.const(30000.0)), w.mul(time, w.const(0.0015)))
+swell = w.sample(sea_n, swell_uv, ST.SAMPLERTYPE_NORMAL)
+xy = w.add(w.add(w.mul(w.mask(big, r=True, g=True), w.scalar("BigWaves", 2.2)),
+                 w.mul(w.mask(small, r=True, g=True), w.scalar("SmallWaves", 1.1))),
+           w.mul(w.mask(swell, r=True, g=True), w.scalar("Swell", 1.6)))
+normal = w.node(unreal.MaterialExpressionAppendVector)
+w.link(xy, normal, "A")
+w.link(w.const(1.0), normal, "B")
+w.out(normal, MP.MP_NORMAL)
+w.out(w.color("WaterColor", (0.010, 0.027, 0.042)), MP.MP_BASE_COLOR)
+w.out(w.scalar("Roughness", 0.12), MP.MP_ROUGHNESS)
+w.out(w.const(0.5), MP.MP_SPECULAR)
+w.finish()
+
+unreal.log("Built M_Deck, M_HeatHaze, M_SteamPuff, M_Sea")
