@@ -52,6 +52,10 @@
 		{
 			"Name": "Takes",
 			"Enabled": true
+		},
+		{
+			"Name": "AndroidFileServer",
+			"Enabled": false
 		}
 	]
 }

@@ -36,3 +36,6 @@ Reference/
 # Render output
 Renders/
 *.exr
+
+# Raw third-party source files (models before import); never committed.
+ThirdPartySource/

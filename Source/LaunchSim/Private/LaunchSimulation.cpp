@@ -294,9 +294,13 @@ LaunchSimulation::Forces LaunchSimulation::computeForces(const BodyState& s, dou
             const double rise = smoothStep(params_.sequence.fire, params_.sequence.fire + cat.pressureRiseTime, t);
             tow = std::max(tow, meanTowForce_ * shape * rise);
         }
+        // The steam pistons pull the shuttle horizontally; the launch bar is a two-force
+        // link, so it carries that pull divided by the cosine of its angle. The extra
+        // downward component is what loads the nose strut on the stroke.
         const Vec3 hinge = launchBarHingeWorld(s);
         const Vec3 tip{launchBarTipX(s), 0.0, 0.0};
-        applyAt(hinge, normalized(tip - hinge) * tow);
+        const Vec3 along = normalized(tip - hinge);
+        applyAt(hinge, along * (tow / std::max(along.x, 0.3)));
     }
     if (towOut != nullptr) {
         *towOut = tow;

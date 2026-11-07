@@ -17,6 +17,7 @@ public class F35CLaunch : ModuleRules
 			"EnhancedInput",
 			"CinematicCamera",
 			"Niagara",
+			"Json",
 			"LaunchSim",
 		});
 	}

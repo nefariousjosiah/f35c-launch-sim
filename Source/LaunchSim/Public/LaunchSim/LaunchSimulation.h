@@ -83,7 +83,7 @@ struct SystemsSnapshot {
     // Catapult hardware.
     double shuttlePosition = 0.0;     ///< m along the track
     double shuttleVelocity = 0.0;
-    double towForce = 0.0;            ///< N along the launch bar
+    double towForce = 0.0;            ///< N, horizontal shuttle pull (the bar carries more)
     double holdbackLoad = 0.0;        ///< N
     bool launchBarEngaged = true;
     bool holdbackAttached = true;

@@ -80,17 +80,18 @@ struct AircraftParams {
     /// Principal moments of inertia, body frame (x roll, y yaw, z pitch), kg m^2.
     /// Scaled from published F-16 values by mass and size [E].
     Vec3 inertia{45.0e3, 300.0e3, 265.0e3};
-    double cgHeightNominal = 1.85;   ///< m above deck at rest [E]
+    double cgHeightNominal = 2.12;   ///< m above deck at rest [D] from the hero model
 
     GearParams noseGear;
     GearParams leftMainGear;
     GearParams rightMainGear;
 
-    /// Launch bar: hinged on the nose gear, its tip rides in the shuttle.
-    Vec3 launchBarHinge{5.45, -1.55, 0.0};  ///< body frame [E]
-    double launchBarLength = 1.0;            ///< m [E]
+    /// Launch bar: hinged on the nose gear just ahead of and above the axle; its tip
+    /// rides in the shuttle at roughly 25 degrees.
+    Vec3 launchBarHinge{5.85, -1.61, 0.0};  ///< body frame [E]
+    double launchBarLength = 1.2;            ///< m [E]
     /// Holdback fitting on the nose gear, aft of the axle.
-    Vec3 holdbackFitting{4.95, -1.62, 0.0};  ///< body frame [E]
+    Vec3 holdbackFitting{5.30, -1.85, 0.0};  ///< body frame [E]
 
     AeroParams aero;
     EngineParams engine;
@@ -98,13 +99,15 @@ struct AircraftParams {
     AircraftParams();
 };
 
-/// Defaults for an F-35C at a 55,000 lb launch weight. Geometry estimates are in
-/// the comments; the wheelbase and track are scaled from published three-views.
+/// Defaults for an F-35C at a 55,000 lb launch weight. Gear geometry is measured
+/// from the hero model scaled to the published 15.7 m length (Tools/Blender/
+/// export_f35_parts.py): 6.36 m wheelbase, 4.38 m main-gear track. Extended lengths
+/// are the modelled strut length plus the static compression.
 inline AircraftParams::AircraftParams() {
     // Nose gear: twin-wheel, carrier-strength, carries ~12% of the weight at rest.
-    noseGear.attach = {5.2, -0.75, 0.0};
-    noseGear.extendedLength = 0.85;
-    noseGear.tyreRadius = 0.30;
+    noseGear.attach = {5.60, -0.57, 0.0};
+    noseGear.extendedLength = 1.26;
+    noseGear.tyreRadius = 0.40;
     noseGear.maxStroke = 0.42;
     noseGear.springLinear = 2.5e5;
     noseGear.springCubic = 3.0e6;
@@ -112,10 +115,10 @@ inline AircraftParams::AircraftParams() {
     noseGear.dampRebound = 6.0e4;
     noseGear.dampLinear = 2.5e3;   // light: the F-35C nose is known to oscillate on the stroke
 
-    // Main gear, 4.3 m track [E], just aft of the CG.
+    // Main gear, 4.38 m track, 0.76 m aft of the CG.
     for (GearParams* gear : {&leftMainGear, &rightMainGear}) {
-        gear->extendedLength = 1.05;
-        gear->tyreRadius = 0.40;
+        gear->extendedLength = 1.63;
+        gear->tyreRadius = 0.54;
         gear->maxStroke = 0.45;
         gear->springLinear = 6.0e5;
         gear->springCubic = 2.0e6;
@@ -123,8 +126,8 @@ inline AircraftParams::AircraftParams() {
         gear->dampRebound = 1.2e5;
         gear->dampLinear = 8.0e3;
     }
-    leftMainGear.attach = {-0.7, -0.6, -2.15};
-    rightMainGear.attach = {-0.7, -0.6, 2.15};
+    leftMainGear.attach = {-0.76, -0.115, -2.19};
+    rightMainGear.attach = {-0.76, -0.115, 2.19};
 }
 
 /// The C-13 steam catapult on a Nimitz-class carrier.
