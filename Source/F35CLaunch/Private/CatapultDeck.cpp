@@ -11,7 +11,7 @@
 namespace
 {
 	// Material instances built by Tools/Editor/build_materials.py (values in Docs/Reference.md).
-	const TCHAR* const NonSkid = TEXT("MI_NonSkid");
+	const TCHAR* const NonSkid = TEXT("M_Deck");  // grit, rubber, oil, wear and heat layers
 	const TCHAR* const TrackSteel = TEXT("MI_TrackSteel");
 	const TCHAR* const SlotShadow = TEXT("MI_SlotShadow");
 	const TCHAR* const ShuttleSteel = TEXT("MI_ShuttleSteel");
@@ -103,9 +103,10 @@ void ACatapultDeck::BuildDeck()
 	AddBox(TEXT("DeckPlate"), FVector(Bow - DeckLength * 0.5, -DeckThickness * 0.5, 0.0),
 	       FVector(DeckLength, DeckThickness, DeckWidth), NonSkid);
 
-	// Hull below the bow edge, so crossing the bow reads as a drop to the sea.
-	AddBox(TEXT("BowHull"), FVector(Bow - 6.0, -Freeboard * 0.5, 0.0), FVector(12.0, Freeboard - 1.0, DeckWidth * 0.8),
-	       HullGrey);
+	// Hull under the whole section down to the waterline (stand-in for the carrier model),
+	// so the deck is not a floating slab and crossing the bow reads as an 18 m drop.
+	AddBox(TEXT("Hull"), FVector(Bow - DeckLength * 0.5, -Freeboard * 0.5 - DeckThickness, 0.0),
+	       FVector(DeckLength - 0.6, Freeboard, DeckWidth - 0.6), HullGrey);
 
 	// Catapult track: the slot the launch bar runs in, flanked by steel cover plates.
 	const double TrackCenter = Track * 0.5 - 1.5;

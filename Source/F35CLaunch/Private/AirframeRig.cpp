@@ -75,6 +75,16 @@ FAirframeRig FAirframeRig::Load(const FString& JsonPath)
 			}
 		}
 	}
+	const TSharedPtr<FJsonObject>* Nozzle = nullptr;
+	if (Root->TryGetObjectField(TEXT("nozzle"), Nozzle))
+	{
+		const TArray<TSharedPtr<FJsonValue>>* Exit = nullptr;
+		if ((*Nozzle)->TryGetArrayField(TEXT("exit"), Exit) && Exit->Num() == 3)
+		{
+			Rig.NozzleExit = RigPoint(*Exit);
+		}
+		Rig.NozzleRadius = (*Nozzle)->GetNumberField(TEXT("radius")) * 100.0;
+	}
 	Rig.bValid = Rig.Parts.Num() > 0;
 	return Rig;
 }

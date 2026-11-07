@@ -102,6 +102,12 @@ for wheel in ("noseWheel", "leftWheel", "rightWheel"):
     pts = [to_cg @ (o.matrix_world @ mathutils.Vector(c)) for c in o.bound_box]
     radius = 0.5 * (max(p.z for p in pts) - min(p.z for p in pts))
     rig.setdefault("wheels", {})[wheel] = {"axle": list(to_cg @ o.matrix_world.to_translation()), "radius": radius}
+# Engine nozzle exit (aft face of the nozzle petals), for the exhaust effects.
+nozzle = objects["vtol"]
+nozzle_pts = [to_cg @ (o.matrix_world @ mathutils.Vector(c)) for o in [nozzle, *nozzle.children] for c in o.bound_box]
+exit_x = min(p.x for p in nozzle_pts)
+rig["nozzle"] = {"exit": [exit_x, 0.0, sum(p.z for p in nozzle_pts) / len(nozzle_pts)],
+                 "radius": 0.5 * (max(p.z for p in nozzle_pts) - min(p.z for p in nozzle_pts))}
 for strut in ("noseGear", "leftGear", "rightGear"):
     rig.setdefault("strut_tops", {})[strut] = list(to_cg @ objects[strut].matrix_world.to_translation())
 
@@ -170,3 +176,4 @@ print("EXPORTED", fbx_path, "scale", round(scale, 4), "cg", [round(v, 3) for v i
 print("TRIS", sum(tris.values()), tris)
 print("WHEELS", json.dumps(rig["wheels"]))
 print("STRUT_TOPS", json.dumps(rig["strut_tops"]))
+print("NOZZLE", json.dumps(rig["nozzle"]))

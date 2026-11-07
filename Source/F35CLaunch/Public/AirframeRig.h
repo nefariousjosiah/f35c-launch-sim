@@ -23,6 +23,9 @@ struct FAirframeRig
 	TMap<FName, FAirframeRigPart> Parts;
 	/// Modelled strut length, strut top to axle, for nose / left / right (cm).
 	double AuthoredStrutLength[3] = {0.0, 0.0, 0.0};
+	/// Engine nozzle exit centre (cm, airframe frame) and radius (cm), for exhaust effects.
+	FVector NozzleExit = FVector(-450.0, 0.0, 20.0);
+	double NozzleRadius = 60.0;
 	bool bValid = false;
 
 	static FAirframeRig Load(const FString& JsonPath);

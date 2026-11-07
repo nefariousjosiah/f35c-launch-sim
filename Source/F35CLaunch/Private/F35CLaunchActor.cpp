@@ -3,6 +3,9 @@
 #include "F35CLaunchActor.h"
 
 #include "CatapultDeck.h"
+#include "CatapultSteamComponent.h"
+#include "Camera/PlayerCameraManager.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "CineCameraActor.h"
 #include "CineCameraComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -71,6 +74,8 @@ AF35CLaunchActor::AF35CLaunchActor()
 	RootComponent = Root;
 	Airframe = CreateDefaultSubobject<USceneComponent>(TEXT("Airframe"));
 	Airframe->SetupAttachment(Root);
+	Steam = CreateDefaultSubobject<UCatapultSteamComponent>(TEXT("Steam"));
+	Steam->SetupAttachment(Root);
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> Cube(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> Cylinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
@@ -203,6 +208,7 @@ void AF35CLaunchActor::OnConstruction(const FTransform& Transform)
 	}
 	LaunchBar = AddMeshComponent(TEXT("LaunchBar"), CubeMesh, Root);
 	LaunchBar->SetMaterial(0, ProjectMaterial(TEXT("MI_DarkMetal")));
+	BuildExhaustEffects();
 	ResetLaunch();
 	ApplySnapshot();  // show the hooked-up pose in the editor viewport
 }
@@ -218,6 +224,83 @@ void AF35CLaunchActor::ResetLaunch()
 	{
 		Sim->step();
 	}
+	LastEffectsTime = Sim->time();
+	bBarWasEngaged = true;
+	if (Steam != nullptr)
+	{
+		Steam->WindOverDeck = static_cast<float>(Params.environment.windOverDeck);
+		Steam->PowerStroke = static_cast<float>(Params.catapult.powerStroke);
+		Steam->ResetSteam();
+	}
+}
+
+void AF35CLaunchActor::BuildExhaustEffects()
+{
+	UStaticMesh* Cone = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cone.Cone"));
+	UStaticMesh* Plane = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane"));
+	UMaterialInterface* Haze = ProjectMaterial(TEXT("M_HeatHaze"));
+	if (Cone == nullptr || Plane == nullptr || Haze == nullptr)
+	{
+		return;
+	}
+
+	// Exhaust: a cone opening aft from the nozzle. Its apex sits inside the jet so the
+	// visible part starts at nozzle radius; the airframe occludes the rest.
+	const double Length = 1000.0;  // cm
+	const double BaseRadius = 225.0;
+	const double ApexAhead = Length * Rig.NozzleRadius / BaseRadius;
+	ExhaustHaze = AddMeshComponent(TEXT("ExhaustHaze"), Cone, Airframe);
+	ExhaustHazeMaterial = UMaterialInstanceDynamic::Create(Haze, this);
+	ExhaustHaze->SetMaterial(0, ExhaustHazeMaterial);
+	ExhaustHaze->SetCastShadow(false);
+	const FBox Bounds = Cone->GetBoundingBox();
+	const FVector Scale(2.0 * BaseRadius / Bounds.GetSize().X, 2.0 * BaseRadius / Bounds.GetSize().Y,
+	                    Length / Bounds.GetSize().Z);
+	const FQuat Rotation = FRotator(-90.0, 0.0, 0.0).Quaternion();  // cone +Z (apex) -> forward
+	const FVector Apex = Rig.NozzleExit + FVector(ApexAhead, 0.0, 0.0);
+	const FVector ApexLocal(0.0, 0.0, Bounds.Max.Z);
+	ExhaustHaze->SetRelativeTransform(FTransform(Rotation, Apex - Rotation.RotateVector(Scale * ApexLocal), Scale));
+
+	// Jet blast deflector: hot gas turned upward off the raised panels. Deck frame.
+	DeflectorHaze = AddMeshComponent(TEXT("DeflectorHaze"), Plane, Root);
+	DeflectorHazeMaterial = UMaterialInstanceDynamic::Create(Haze, this);
+	DeflectorHaze->SetMaterial(0, DeflectorHazeMaterial);
+	DeflectorHaze->SetCastShadow(false);
+	DeflectorHaze->SetRelativeTransform(FTransform(FRotator(-90.0, 0.0, 0.0), FVector(-2200.0, 0.0, 640.0),
+	                                               FVector(6.0, 13.0, 1.0)));
+}
+
+void AF35CLaunchActor::UpdateEffects(const launchsim::SystemsSnapshot& S, float SimDeltaSeconds)
+{
+	const launchsim::EngineParams& Engine = Sim->params().aircraft.engine;
+	const double Power =
+		FMath::Clamp((S.thrust - Engine.thrustIdle) / (Engine.thrustMil - Engine.thrustIdle), 0.0, 1.4);
+	if (ExhaustHazeMaterial != nullptr)
+	{
+		ExhaustHazeMaterial->SetScalarParameterValue(TEXT("Intensity"), static_cast<float>(0.15 + 0.85 * Power));
+	}
+	if (DeflectorHazeMaterial != nullptr)
+	{
+		// Only while the jet is still blowing into the raised panels.
+		const double OnPanels = S.time < 0.3 ? 1.0 : FMath::Clamp(1.0 - (S.time - 0.3) / 1.5, 0.0, 1.0);
+		DeflectorHazeMaterial->SetScalarParameterValue(TEXT("Intensity"), static_cast<float>(Power * OnPanels));
+	}
+	if (Steam != nullptr)
+	{
+		FVector CameraWorld = GetActorLocation() + FVector(-3000.0, 0.0, 300.0);
+		if (APlayerController* Controller = GetWorld() != nullptr ? GetWorld()->GetFirstPlayerController() : nullptr)
+		{
+			if (Controller->PlayerCameraManager != nullptr)
+			{
+				CameraWorld = Controller->PlayerCameraManager->GetCameraLocation();
+			}
+		}
+		const FVector CameraLocal = GetActorTransform().InverseTransformPosition(CameraWorld);
+		const bool bJustSeparated = bBarWasEngaged && !S.launchBarEngaged;
+		Steam->Step(SimDeltaSeconds, S.time, S.shuttlePosition, S.launchBarEngaged && S.time > 0.0, bJustSeparated,
+		            CameraLocal);
+	}
+	bBarWasEngaged = S.launchBarEngaged;
 }
 
 void AF35CLaunchActor::BeginPlay()
@@ -327,6 +410,8 @@ void AF35CLaunchActor::Tick(float DeltaSeconds)
 		}
 	}
 	ApplySnapshot();
+	UpdateEffects(Sim->snapshot(), static_cast<float>(Sim->time() - LastEffectsTime));
+	LastEffectsTime = Sim->time();
 	AimCamera(DeltaSeconds, false);
 }
 

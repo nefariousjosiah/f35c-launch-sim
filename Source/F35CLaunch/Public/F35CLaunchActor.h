@@ -10,6 +10,8 @@
 class ACatapultDeck;
 class UStaticMeshComponent;
 class UMaterialInterface;
+class UMaterialInstanceDynamic;
+class UCatapultSteamComponent;
 
 /// Runs one catapult launch and drives everything visible from it.
 ///
@@ -115,6 +117,8 @@ private:
 	bool UpdateCapture();
 	void AimCamera(float DeltaSeconds, bool bSnap);
 	void ConfigureCameraExposure();
+	void BuildExhaustEffects();
+	void UpdateEffects(const launchsim::SystemsSnapshot& S, float SimDeltaSeconds);
 
 	UPROPERTY(VisibleAnywhere, Category = "Launch")
 	TObjectPtr<USceneComponent> Root;
@@ -130,6 +134,23 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UStaticMeshComponent> LaunchBar;
 
+	/// Catapult steam, in the deck frame.
+	UPROPERTY(VisibleAnywhere, Category = "Effects")
+	TObjectPtr<UCatapultSteamComponent> Steam;
+
+	/// Refraction-only heat haze: a cone from the nozzle, and a rising sheet over the JBD.
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMeshComponent> ExhaustHaze;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMeshComponent> DeflectorHaze;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> ExhaustHazeMaterial;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> DeflectorHazeMaterial;
+
 	UPROPERTY()
 	TObjectPtr<UStaticMesh> CubeMesh;
 
@@ -144,6 +165,8 @@ private:
 
 	FAirframeRig Rig;
 	bool bUsingModel = false;
+	double LastEffectsTime = 0.0;
+	bool bBarWasEngaged = true;
 
 	TUniquePtr<launchsim::LaunchSimulation> Sim;
 

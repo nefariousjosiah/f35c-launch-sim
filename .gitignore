@@ -39,3 +39,6 @@ Renders/
 
 # Raw third-party source files (models before import); never committed.
 ThirdPartySource/
+
+# Regenerable output of Tools/Textures/generate_textures.py (the imported textures are committed).
+SourceArt/Generated/
