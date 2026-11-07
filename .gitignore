@@ -1,0 +1,38 @@
+# Unreal build output and caches
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+Plugins/*/Binaries/
+Plugins/*/Intermediate/
+
+# IDE files (regenerate with "Generate Visual Studio project files")
+.vs/
+.vscode/
+.idea/
+*.sln
+*.VC.db
+*.VC.opendb
+*.suo
+*.sdf
+*.opensdf
+
+# Standalone LaunchSim build (CMake)
+build/
+out/
+
+# Third-party marketplace content. The Fab Standard License allows these in the
+# project and its renders/builds, but forbids redistributing the files, so they
+# never enter the repo. See ASSETS.md for where to get them and where they go.
+Content/ThirdParty/
+Content/Fab/
+Content/Megascans/
+Content/MetaHumans/
+Plugins/Marketplace/
+
+# Reference footage and stills: linked from Docs/Reference.md, not committed.
+Reference/
+
+# Render output
+Renders/
+*.exr
